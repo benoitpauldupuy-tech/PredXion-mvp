@@ -10,7 +10,15 @@ import joblib
 model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
-st.title("📊 PredXion MVP")
+st.markdown(
+"""
+<h1>PREDXION</h1>
+<p style='text-align:center;color:grey'>
+Luxury Retail Forecasting Platform
+</p>
+""",
+unsafe_allow_html=True
+)
 
 st.markdown("""
 <style>
