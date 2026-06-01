@@ -182,7 +182,10 @@ if mode == "📊 Manuel":
             pred_log = model.predict(input_df)
             pred = np.expm1(pred_log)
 
-            st.success(f"📦 Ventes prévues : {int(pred[0])}")
+            st.metric(
+                label="Prévision de ventes",
+                value=f"{int(pred[0]):,}".replace(",", " ")
+)
 
 # =========================
 # MODE EXCEL
