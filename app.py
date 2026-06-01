@@ -3,22 +3,55 @@ import pandas as pd
 import numpy as np
 import joblib
 
-model = joblib.load("model.pkl")
+# =========================
+# CHARGEMENT
+# =========================
 
+model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 st.title("📊 PredXion MVP")
 
-# 🔥 ICI (OBLIGATOIRE AVANT TOUT IF)
+# =========================
+# MODE (DOIT ÊTRE EN PREMIER)
+# =========================
+
 mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
+
 # =========================
+# FONCTION LISTES
+# =========================
+
+def get_list(col):
+    return sorted(df[col].dropna().astype(str).unique())
+
+# =========================
+# LISTES
+# =========================
+
+saison_list = get_list("Saison")
+reconduit_list = get_list("Reconduit")
+
+cat_list = get_list("Catégorie Produit")
+subcat_list = get_list("Sous-Catégorie Produit")
+typ_list = get_list("Typologie Produit")
+
+matiere_list = get_list("Matière")
+groupe_couleur_list = get_list("Groupe Couleur")
+type_couleur_list = get_list("Type Couleur")
+
+mois_list = get_list("Mois Implantation")
+gamme_list = get_list("Gamme PV")
+parc_list = get_list("Parc Magasin")
+
+# =========================================================
 # MODE MANUEL
-# =========================
+# =========================================================
 
 if mode == "📊 Manuel":
 
     saison = st.selectbox("Saison", ["Sélectionnez"] + saison_list)
-    annees = st.text_input("Année (ex : 2026)")
+    annees = st.text_input("Année (ex: 2026)")
     reconduit = st.selectbox("Reconduit", ["Sélectionnez"] + reconduit_list)
 
     cat = st.selectbox("Catégorie Produit", ["Sélectionnez"] + cat_list)
@@ -36,23 +69,18 @@ if mode == "📊 Manuel":
     gamme = st.selectbox("Gamme PV", ["Sélectionnez"] + gamme_list)
 
     prix = st.number_input("Prix de Vente (€)", min_value=0.0)
-
     parc = st.selectbox("Parc Magasin", ["Sélectionnez"] + parc_list)
-
-    # =========================
-    # BOUTON DANS LE BON BLOC
-    # =========================
 
     if st.button("Prédire"):
 
-        champs_select = [
+        champs = [
             saison, reconduit, cat, subcat, typ,
             matiere, groupe_couleur, type_couleur,
             mois, gamme, parc
         ]
 
-        if "Sélectionnez" in champs_select:
-            st.warning("⚠️ Merci de compléter tous les champs.")
+        if "Sélectionnez" in champs:
+            st.warning("⚠️ Merci de compléter tous les champs")
 
         else:
 
@@ -75,19 +103,11 @@ if mode == "📊 Manuel":
             }])
 
             # FEATURES DÉRIVÉES
-            input_df["Cat_Saison"] = (
-                input_df["Catégorie Produit"] + "_" + input_df["Saison"]
-            )
+            input_df["Cat_Saison"] = input_df["Catégorie Produit"] + "_" + input_df["Saison"]
+            input_df["Typo_Saison"] = input_df["Typologie Produit"] + "_" + input_df["Saison"]
+            input_df["Cat_GammePV"] = input_df["Catégorie Produit"] + "_" + input_df["Gamme PV"]
 
-            input_df["Typo_Saison"] = (
-                input_df["Typologie Produit"] + "_" + input_df["Saison"]
-            )
-
-            input_df["Cat_GammePV"] = (
-                input_df["Catégorie Produit"] + "_" + input_df["Gamme PV"]
-            )
-
-            # ORDER FIX
+            # ORDRE EXACT MODEL
             expected_cols = [
                 "Saison","Années","Reconduit","Catégorie Produit",
                 "Sous-Catégorie Produit","Typologie Produit","Matière",
@@ -101,4 +121,47 @@ if mode == "📊 Manuel":
             pred_log = model.predict(input_df)
             pred = np.expm1(pred_log)
 
-            st.success(f"📦 Ventes prévisionnelles : {int(pred[0])}")
+            st.success(f"📦 Ventes prévues : {int(pred[0])}")
+
+# =========================================================
+# MODE EXCEL (UPLOAD + PREDICTION BATCH)
+# =========================================================
+
+if mode == "📁 Excel":
+
+    file = st.file_uploader("Uploader un fichier Excel", type=["xlsx"])
+
+    if file is not None:
+
+        df_input = pd.read_excel(file)
+
+        st.write("Aperçu du fichier")
+        st.dataframe(df_input.head())
+
+        if st.button("Lancer prédictions"):
+
+            # FEATURES DÉRIVÉES
+            df_input["Cat_Saison"] = df_input["Catégorie Produit"] + "_" + df_input["Saison"]
+            df_input["Typo_Saison"] = df_input["Typologie Produit"] + "_" + df_input["Saison"]
+            df_input["Cat_GammePV"] = df_input["Catégorie Produit"] + "_" + df_input["Gamme PV"]
+
+            expected_cols = [
+                "Saison","Années","Reconduit","Catégorie Produit",
+                "Sous-Catégorie Produit","Typologie Produit","Matière",
+                "Groupe Couleur","Type Couleur","Couleur","Thème",
+                "Mois Implantation","Gamme PV","Prix de Vente","Parc Magasin",
+                "Cat_Saison","Typo_Saison","Cat_GammePV"
+            ]
+
+            df_input = df_input[expected_cols]
+
+            preds_log = model.predict(df_input)
+            preds = np.expm1(preds_log)
+
+            df_input["Prediction_Ventes"] = preds
+
+            st.success("✅ Prédictions terminées")
+            st.dataframe(df_input)
+
+            csv = df_input.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Télécharger résultats", csv, "predictions.csv", "text/csv")
