@@ -62,11 +62,26 @@ prix = st.number_input("Prix de Vente (€)", min_value=0.0)
         "Parc Magasin": parc
     }])
 
-    if st.button("Prédire"):
+if st.button("Prédire"):
+
+    # 🔴 CHECK INPUTS AVANT PRÉDICTION
+    if "Sélectionnez" in [cat, typ, gamme, parc]:
+
+        st.warning("⚠️ Merci de compléter tous les champs obligatoires")
+
+    else:
+
+        input_df = pd.DataFrame([{
+            "Catégorie Produit": cat,
+            "Typologie Produit": typ,
+            "Gamme PV": gamme,
+            "Parc Magasin": parc,
+            "Années": annees,
+            "Prix de Vente": prix
+        }])
 
         pred_log = model.predict(input_df)
         pred = np.expm1(pred_log)
 
         st.success(f"📦 Ventes prévues : {int(pred[0])}")
-parc_list = get_list("Parc Magasin")
 
