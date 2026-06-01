@@ -88,8 +88,8 @@ p {
 }
 
 .stButton > button {
-    background: white;
-    color: black;
+    background: black;
+    color: white;
     border-radius: 10px;
     border: none;
     height: 50px;
