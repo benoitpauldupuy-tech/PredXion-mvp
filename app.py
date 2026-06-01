@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 
 model = joblib.load("model.pkl")
-df = pd.read_excel("data.xlsx")  # ou csv
+df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx") # ou csv
 st.title("📊 PredXion MVP")
 
 def get_list(col):
