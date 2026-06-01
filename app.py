@@ -64,10 +64,8 @@ prix = st.number_input("Prix de Vente (€)", min_value=0.0)
 
 if st.button("Prédire"):
 
-    # 🔴 CHECK INPUTS AVANT PRÉDICTION
     if "Sélectionnez" in [cat, typ, gamme, parc]:
-
-        st.warning("⚠️ Merci de compléter tous les champs obligatoires")
+        st.warning("Merci de compléter tous les champs")
 
     else:
 
@@ -84,4 +82,3 @@ if st.button("Prédire"):
         pred = np.expm1(pred_log)
 
         st.success(f"📦 Ventes prévues : {int(pred[0])}")
-
