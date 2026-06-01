@@ -7,60 +7,70 @@ model = joblib.load("model.pkl")
 
 st.title("📊 PredXion MVP")
 
-mode = st.radio("Mode de prédiction", ["📊 Manuel", "📁 Excel"])
+def get_list(col):
+    return sorted(df[col].dropna().unique())
 
-# =========================
-# LISTES (à adapter si besoin)
-# =========================
-cat_list = sorted(pd.DataFrame().columns)  # temporaire safe
-typ_list = []
-gamme_list = []
-saison_list = []
+saison_list = get_list("Saison")
+annees_list = get_list("Années")
+reconduit_list = get_list("Reconduit")
 
-# =========================
-# MODE MANUEL
-# =========================
+cat_list = get_list("Catégorie Produit")
+subcat_list = get_list("Sous-Catégorie Produit")
+typ_list = get_list("Typologie Produit")
+
+matiere_list = get_list("Matière")
+groupe_couleur_list = get_list("Groupe Couleur")
+type_couleur_list = get_list("Type Couleur")
+
+mois_list = get_list("Mois Implantation")
+gamme_list = get_list("Gamme PV")
+
+mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
+
 if mode == "📊 Manuel":
 
-    st.write("Mode manuel")
+    saison = st.selectbox("Saison", saison_list)
+    annees = st.selectbox("Années", annees_list)
+    reconduit = st.selectbox("Reconduit", reconduit_list)
 
-    cat = st.text_input("Catégorie Produit")
-    typ = st.text_input("Typologie Produit")
-    gamme = st.text_input("Gamme PV")
-    saison = st.text_input("Saison")
+    cat = st.selectbox("Catégorie Produit", cat_list)
+    subcat = st.selectbox("Sous-Catégorie Produit", subcat_list)
+    typ = st.selectbox("Typologie Produit", typ_list)
+
+    matiere = st.selectbox("Matière", matiere_list)
+    groupe_couleur = st.selectbox("Groupe Couleur", groupe_couleur_list)
+    type_couleur = st.selectbox("Type Couleur", type_couleur_list)
+
+    mois = st.selectbox("Mois Implantation", mois_list)
+    gamme = st.selectbox("Gamme PV", gamme_list)
+
     prix = st.number_input("Prix de Vente", min_value=0.0)
 
-    if st.button("Prédire"):
+    parc = st.selectbox("Parc Magasin", parc_list)
 
-        input_df = pd.DataFrame([{
-            "Catégorie Produit": cat,
-            "Typologie Produit": typ,
-            "Gamme PV": gamme,
-            "Saison": saison,
-            "Prix de Vente": prix
-        }])
+
+    input_df = pd.DataFrame([{
+        "Saison": saison,
+        "Années": annees,
+        "Reconduit": reconduit,
+        "Catégorie Produit": cat,
+        "Sous-Catégorie Produit": subcat,
+        "Typologie Produit": typ,
+        "Matière": matiere,
+        "Groupe Couleur": groupe_couleur,
+        "Type Couleur": type_couleur,
+        "Mois Implantation": mois,
+        "Gamme PV": gamme,
+        "Prix de Vente": prix,
+        "Parc Magasin": parc
+    }])
+
+
+    if st.button("Prédire"):
 
         pred_log = model.predict(input_df)
         pred = np.expm1(pred_log)
 
         st.success(f"📦 Ventes prévues : {int(pred[0])}")
+parc_list = get_list("Parc Magasin")
 
-# =========================
-# MODE EXCEL
-# =========================
-elif mode == "📁 Excel":
-
-    file = st.file_uploader("Upload Excel", type=["xlsx"])
-
-    if file is not None:
-
-        df = pd.read_excel(file)
-
-        st.write(df.head())
-
-        pred_log = model.predict(df)
-        pred = np.expm1(pred_log)
-
-        df["prediction"] = pred
-
-        st.write(df)
