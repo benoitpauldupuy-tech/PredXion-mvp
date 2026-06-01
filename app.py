@@ -62,7 +62,6 @@ prix = st.number_input("Prix de Vente (€)", min_value=0.0)
         "Parc Magasin": parc
     }])
 
-
     if st.button("Prédire"):
 
         pred_log = model.predict(input_df)
