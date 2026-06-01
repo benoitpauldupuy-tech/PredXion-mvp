@@ -59,34 +59,34 @@ if mode == "📊 Manuel":
     
     prix = st.number_input("Prix de Vente (€)", min_value=0.0)
     # bouton dans le bloc manuel
-    if st.button("Prédire"):
+if st.button("Prédire"):
 
-        if "Sélectionnez" in [cat, typ, gamme, parc]:
-            st.warning("⚠️ Merci de compléter tous les champs")
+    if "Sélectionnez" in [cat, typ, gamme, parc]:
+        st.warning("⚠️ Merci de compléter tous les champs")
 
-        else:
+    else:
 
-            input_df = pd.DataFrame([{
-                "Saison": saison,
-                "Années": annees,
-                "Catégorie Produit": cat,
-                "Sous-Catégorie Produit": subcat,
-                "Typologie Produit": typ,
-                "Matière": matiere,
-                "Groupe Couleur": groupe_couleur,
-                "Type Couleur": type_couleur,
-                "Mois Implantation": mois,
-                "Gamme PV": gamme,
-                "Prix de Vente": prix,
-                "Parc Magasin": parc
-            }])
+        input_df = pd.DataFrame([{
+            "Saison": saison,
+            "Années": annees,
+            "Catégorie Produit": cat,
+            "Sous-Catégorie Produit": subcat,
+            "Typologie Produit": typ,
+            "Matière": matiere,
+            "Groupe Couleur": groupe_couleur,
+            "Type Couleur": type_couleur,
+            "Mois Implantation": mois,
+            "Gamme PV": gamme,
+            "Prix de Vente": prix,
+            "Parc Magasin": parc
+        }])
 
-# 🔥 FEATURES DÉRIVÉES (CRITIQUE)
-input_df["Cat_Saison"] = input_df["Catégorie Produit"] + "_" + input_df["Saison"]
-input_df["Typo_Saison"] = input_df["Typologie Produit"] + "_" + input_df["Saison"]
-input_df["Cat_GammePV"] = input_df["Catégorie Produit"] + "_" + input_df["Gamme PV"]
+        # 🔥 FEATURES DÉRIVÉES (DANS LE BON BLOC)
+        input_df["Cat_Saison"] = input_df["Catégorie Produit"] + "_" + input_df["Saison"]
+        input_df["Typo_Saison"] = input_df["Typologie Produit"] + "_" + input_df["Saison"]
+        input_df["Cat_GammePV"] = input_df["Catégorie Produit"] + "_" + input_df["Gamme PV"]
 
-            pred_log = model.predict(input_df)
-            pred = np.expm1(pred_log)
+        pred_log = model.predict(input_df)
+        pred = np.expm1(pred_log)
 
-            st.success(f"📦 Ventes prévues : {int(pred[0])}")
+        st.success(f"📦 Ventes prévues : {int(pred[0])}")
