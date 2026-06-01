@@ -58,6 +58,46 @@ h1 {
 
 </style>
 """, unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
+.stApp {
+    background: linear-gradient(
+        135deg,
+        #0f172a 0%,
+        #1e293b 40%,
+        #334155 100%
+    );
+}
+
+h1 {
+    text-align: center;
+    color: white;
+}
+
+p {
+    color: #d1d5db;
+}
+
+[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.stButton > button {
+    background: white;
+    color: black;
+    border-radius: 10px;
+    border: none;
+    height: 50px;
+    font-weight: bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
 # =========================
 # FONCTIONS
 # =========================
