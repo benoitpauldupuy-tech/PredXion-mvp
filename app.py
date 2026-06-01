@@ -1,3 +1,16 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+
+model = joblib.load("model.pkl")
+
+df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
+
+st.title("📊 PredXion MVP")
+
+# 🔥 ICI (OBLIGATOIRE AVANT TOUT IF)
+mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 # =========================
 # MODE MANUEL
 # =========================
