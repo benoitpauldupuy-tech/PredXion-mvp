@@ -12,9 +12,12 @@ df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 st.markdown(
 """
-<h1>PREDXION</h1>
-<p style='text-align:center;color:white>
-Retail Forecasting Platform
+<h1 style='text-align:center; color:#D4AF37;'>
+    PredXion
+</h1>
+
+<p style='text-align:center; color:white; font-size:18px;'>
+    Retail Forecasting Platform
 </p>
 """,
 unsafe_allow_html=True
