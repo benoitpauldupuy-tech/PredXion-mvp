@@ -1,5 +1,8 @@
 import streamlit as st
+import joblib
 
 st.title("📊 PredXion MVP")
 
-st.write("Mon app Streamlit fonctionne 🚀")
+model = joblib.load("model.pkl")
+
+st.success("✅ Modèle chargé avec succès")
