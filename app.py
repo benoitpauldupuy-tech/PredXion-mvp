@@ -14,7 +14,7 @@ st.markdown(
 """
 <h1>PREDXION</h1>
 <p style='text-align:center;color:grey'>
-Luxury Retail Forecasting Platform
+Retail Forecasting Platform
 </p>
 """,
 unsafe_allow_html=True
