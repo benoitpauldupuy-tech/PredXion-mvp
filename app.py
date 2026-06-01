@@ -67,13 +67,24 @@ if mode == "📊 Manuel":
         else:
 
             input_df = pd.DataFrame([{
-                "Catégorie Produit": cat,
-                "Typologie Produit": typ,
-                "Gamme PV": gamme,
-                "Parc Magasin": parc,
+                "Saison": saison,
                 "Années": annees,
-                "Prix de Vente": prix
+                "Catégorie Produit": cat,
+                "Sous-Catégorie Produit": subcat,
+                "Typologie Produit": typ,
+                "Matière": matiere,
+                "Groupe Couleur": groupe_couleur,
+                "Type Couleur": type_couleur,
+                "Mois Implantation": mois,
+                "Gamme PV": gamme,
+                "Prix de Vente": prix,
+                "Parc Magasin": parc
             }])
+
+# 🔥 FEATURES DÉRIVÉES (CRITIQUE)
+input_df["Cat_Saison"] = input_df["Catégorie Produit"] + "_" + input_df["Saison"]
+input_df["Typo_Saison"] = input_df["Typologie Produit"] + "_" + input_df["Saison"]
+input_df["Cat_GammePV"] = input_df["Catégorie Produit"] + "_" + input_df["Gamme PV"]
 
             pred_log = model.predict(input_df)
             pred = np.expm1(pred_log)
