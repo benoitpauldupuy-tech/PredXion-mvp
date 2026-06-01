@@ -4,120 +4,29 @@ import numpy as np
 import joblib
 
 # =========================
-# CHARGEMENT
+# CONFIG
 # =========================
+
+st.set_page_config(page_title="PredXion", layout="wide")
 
 model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
-st.markdown(
-"""
-<h1 style='
-text-align:center;
-color:#D4AF37;
-font-size:60px;
-font-weight:300;
-letter-spacing:4px;
-margin-top:50px;
-margin-bottom:0px;
-'>
+# =========================
+# UI TITLE
+# =========================
+
+st.markdown("""
+<h1 style='text-align:center;color:#D4AF37;font-size:60px;font-weight:300;letter-spacing:4px;margin-top:40px;'>
 PredXion
 </h1>
-
-<p style='
-text-align:center;
-color:white;
-font-size:18px;
-letter-spacing:2px;
-margin-top:5px;
-margin-bottom:40px;
-'>
+<p style='text-align:center;color:#ccc;font-size:16px;letter-spacing:2px;'>
 RETAIL FORECASTING PLATFORM
 </p>
-""",
-unsafe_allow_html=True
-)
-
-st.markdown("""
-<style>
-
-.main {
-    background-color: white;
-}
-
-h1 {
-    text-align:center;
-    color:black;
-}
-
-.block-container {
-    padding-top:2rem;
-    max-width:1200px;
-}
-
-[data-testid="stMetric"] {
-    border:1px solid #EAEAEA;
-    border-radius:12px;
-    padding:20px;
-}
-
-.stButton > button {
-    width:100%;
-    border-radius:8px;
-    height:50px;
-    background-color:black;
-    color:white;
-    border:none;
-}
-
-.stButton > button:hover {
-    background-color:#222222;
-}
-
-</style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-
-.stApp {
-    background: linear-gradient(
-        135deg,
-        #0f172a 0%,
-        #1e293b 40%,
-        #334155 100%
-    );
-}
-
-h1 {
-    text-align: center;
-    color: white;
-}
-
-p {
-    color: #d1d5db;
-}
-
-[data-testid="stMetric"] {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-.stButton > button {
-    background: black;
-    color: white;
-    border-radius: 10px;
-    border: none;
-    height: 50px;
-    font-weight: bold;
-}
-
-</style>
-""", unsafe_allow_html=True)
 # =========================
-# FONCTIONS
+# FUNCTIONS
 # =========================
 
 def get_list(col):
@@ -130,7 +39,7 @@ def build_features(data):
     return data
 
 # =========================
-# LISTES
+# LISTS
 # =========================
 
 saison_list = get_list("Saison")
@@ -155,7 +64,7 @@ parc_list = get_list("Parc Magasin")
 mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
 # =========================
-# FEATURES ATTENDUES MODEL
+# EXPECTED FEATURES
 # =========================
 
 expected_cols = [
@@ -180,13 +89,47 @@ expected_cols = [
 ]
 
 # =========================
-# MODE MANUEL
+# SCORE TABLES
+# =========================
+
+mae_cat = {
+    "T-Shirts": 2696.23,
+    "Jupes": 2029.69,
+    "Vestes": 2016.68,
+    "Chemises": 1930.53,
+    "Pulls": 1889.54,
+    "Pantalons": 1869.48,
+    "Robes": 1620.77,
+    "Manteaux": 841.84
+}
+
+mae_typo = {
+    "Essentiel": 2107.97,
+    "Mode": 1516.86,
+    "Image": 365.82
+}
+
+def norm(x, mn, mx):
+    return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
+
+def compute_scores(cat, typ):
+    cat_score = norm(mae_cat.get(cat, np.mean(list(mae_cat.values()))),
+                     min(mae_cat.values()), max(mae_cat.values()))
+
+    typ_score = norm(mae_typo.get(typ, np.mean(list(mae_typo.values()))),
+                     min(mae_typo.values()), max(mae_typo.values()))
+
+    ml_score = (0.6 * cat_score) + (0.4 * typ_score)
+    return ml_score
+
+# =========================
+# MANUAL MODE
 # =========================
 
 if mode == "📊 Manuel":
 
     saison = st.selectbox("Saison", ["Sélectionnez"] + saison_list)
-    annees = st.text_input("Année (ex: 2026)")
+    annees = st.text_input("Année")
     reconduit = st.selectbox("Reconduit", ["Sélectionnez"] + reconduit_list)
 
     cat = st.selectbox("Catégorie Produit", ["Sélectionnez"] + cat_list)
@@ -208,8 +151,8 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-        required = [saison, reconduit, cat, subcat, typ, matiere,
-                    groupe_couleur, type_couleur, mois, gamme, parc]
+        required = [saison, reconduit, cat, subcat, typ,
+                    matiere, groupe_couleur, type_couleur, mois, gamme, parc]
 
         if "Sélectionnez" in required:
             st.warning("⚠️ Merci de compléter tous les champs")
@@ -240,125 +183,63 @@ if mode == "📊 Manuel":
             pred_log = model.predict(input_df)
             pred = np.expm1(pred_log)
 
-            st.metric(
-                label="Prévision de ventes",
-                value=f"{int(pred[0]):,}".replace(",", " ")
-)
+            # =========================
+            # BUSINESS SCORE (SAFE)
+            # =========================
+
+            avg_same = df[
+                (df["Catégorie Produit"] == cat) &
+                (df["Saison"] == saison)
+            ]["Quantités Vendues"].mean()
+
+            if np.isnan(avg_same):
+                stock_score = 50
+            else:
+                diff = abs(pred[0] - avg_same)
+
+                if diff <= 900:
+                    stock_score = 90
+                elif diff <= 1500:
+                    stock_score = 60
+                else:
+                    stock_score = 20
+
+            ml_score = compute_scores(cat, typ)
+            final_score = (0.7 * ml_score) + (0.3 * stock_score)
+
+            if final_score >= 70:
+                label = "🟢 Achat sécurisé"
+            elif final_score >= 40:
+                label = "🟠 À vérifier"
+            else:
+                label = "🔴 Risque élevé"
+
+            st.metric("📦 Ventes prévues", f"{int(pred[0])}")
+            st.metric("🎯 Score confiance", f"{int(final_score)}/100")
+            st.markdown(f"### {label}")
 
 # =========================
-# MODE EXCEL
+# EXCEL MODE
 # =========================
 
 if mode == "📁 Excel":
 
-    file = st.file_uploader("Uploader un fichier Excel", type=["xlsx"])
+    file = st.file_uploader("Uploader Excel", type=["xlsx"])
 
-    if file is not None:
+    if file:
 
         df_upload = pd.read_excel(file)
-
-        st.write("Aperçu")
-        st.dataframe(df_upload.head())
 
         if st.button("Lancer prédictions"):
 
             df_upload = build_features(df_upload)
             df_upload = df_upload[expected_cols]
 
-            preds_log = model.predict(df_upload)
-            preds = np.expm1(preds_log)
-
+            preds = np.expm1(model.predict(df_upload))
             df_upload["Prediction"] = preds
 
-            st.success("Prédictions terminées")
-
+            st.success("OK")
             st.dataframe(df_upload)
 
             csv = df_upload.to_csv(index=False).encode("utf-8")
-            st.download_button("Télécharger résultat", csv, "predictions.csv", "text/csv")
-
-# =========================
-# SCORE CONFIANCE ML
-# =========================
-
-mae_cat = {
-    "T-Shirts": 2696.23,
-    "Jupes": 2029.69,
-    "Vestes": 2016.68,
-    "Chemises": 1930.53,
-    "Pulls": 1889.54,
-    "Pantalons": 1869.48,
-    "Robes": 1620.77,
-    "Manteaux": 841.84
-}
-
-mae_typo = {
-    "Essentiel": 2107.97,
-    "Mode": 1516.86,
-    "Image": 365.82
-}
-
-def norm(x, mn, mx):
-    return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
-
-cat_score = norm(
-    mae_cat.get(cat, np.mean(list(mae_cat.values()))),
-    min(mae_cat.values()),
-    max(mae_cat.values())
-)
-
-typ_score = norm(
-    mae_typo.get(typ, np.mean(list(mae_typo.values()))),
-    min(mae_typo.values()),
-    max(mae_typo.values())
-)
-
-ml_score = (0.6 * cat_score) + (0.4 * typ_score)
-
-# =========================
-# SCORE BUSINESS (SAISON ÉQUIVALENTE)
-# =========================
-
-# moyenne sur même catégorie + même saison
-avg_same_season = df[
-    (df["Catégorie Produit"] == cat) &
-    (df["Saison"] == saison)
-]["Quantités Vendues"].mean()
-
-if np.isnan(avg_same_season):
-    stock_risk = 50  # neutral si pas de data
-else:
-    diff_stock = abs(pred[0] - avg_same_season)
-
-    # logique métier retail
-    if diff_stock <= 900:
-        stock_risk = 90   # très cohérent
-    elif diff_stock <= 1500:
-        stock_risk = 60   # acceptable
-    else:
-        stock_risk = 20   # incohérent / risque fort
-
-# =========================
-# SCORE FINAL
-# =========================
-
-final_score = (ml_score * 0.7) + (stock_risk * 0.3)
-
-# =========================
-# FEU MÉTIER
-# =========================
-
-if final_score >= 70:
-    label = "🟢 Achat sécurisé"
-elif final_score >= 40:
-    label = "🟠 À vérifier"
-else:
-    label = "🔴 Risque élevé"
-
-# =========================
-# AFFICHAGE
-# =========================
-
-st.metric("📦 Ventes prévues", f"{int(pred[0])}")
-st.metric("🎯 Score confiance", f"{int(final_score)}/100")
-st.markdown(f"### {label}")
+            st.download_button("Télécharger", csv, "predictions.csv", "text/csv")
