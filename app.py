@@ -12,6 +12,44 @@ df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 st.title("📊 PredXion MVP")
 
+st.markdown("""
+<style>
+
+.main {
+    background-color: white;
+}
+
+h1 {
+    text-align:center;
+    color:black;
+}
+
+.block-container {
+    padding-top:2rem;
+    max-width:1200px;
+}
+
+[data-testid="stMetric"] {
+    border:1px solid #EAEAEA;
+    border-radius:12px;
+    padding:20px;
+}
+
+.stButton > button {
+    width:100%;
+    border-radius:8px;
+    height:50px;
+    background-color:black;
+    color:white;
+    border:none;
+}
+
+.stButton > button:hover {
+    background-color:#222222;
+}
+
+</style>
+""", unsafe_allow_html=True)
 # =========================
 # FONCTIONS
 # =========================
