@@ -61,78 +61,78 @@ mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
 if mode == "📊 Manuel":
 
-```
-saison = st.selectbox(
-    "Saison",
-    ["Sélectionnez"] + saison_list
-)
-
-annees = st.text_input(
-    "Année (ex : 2026)"
-)
-
-reconduit = st.selectbox(
-    "Reconduit",
-    ["Sélectionnez"] + reconduit_list
-)
-
-cat = st.selectbox(
-    "Catégorie Produit",
-    ["Sélectionnez"] + cat_list
-)
-
-subcat = st.selectbox(
-    "Sous-Catégorie Produit",
-    ["Sélectionnez"] + subcat_list
-)
-
-typ = st.selectbox(
-    "Typologie Produit",
-    ["Sélectionnez"] + typ_list
-)
-
-matiere = st.selectbox(
-    "Matière",
-    ["Sélectionnez"] + matiere_list
-)
-
-groupe_couleur = st.selectbox(
-    "Groupe Couleur",
-    ["Sélectionnez"] + groupe_couleur_list
-)
-
-type_couleur = st.selectbox(
-    "Type Couleur",
-    ["Sélectionnez"] + type_couleur_list
-)
-
-couleur = st.text_input(
-    "Couleur"
-)
-
-theme = st.text_input(
-    "Thème"
-)
-
-mois = st.selectbox(
-    "Mois Implantation",
-    ["Sélectionnez"] + mois_list
-)
-
-gamme = st.selectbox(
-    "Gamme PV",
-    ["Sélectionnez"] + gamme_list
-)
-
-prix = st.number_input(
-    "Prix de Vente (€)",
-    min_value=0.0
-)
-
-parc = st.selectbox(
-    "Parc Magasin",
-    ["Sélectionnez"] + parc_list
-)
+    ```
+    saison = st.selectbox(
+        "Saison",
+        ["Sélectionnez"] + saison_list
+    )
+    
+    annees = st.text_input(
+        "Année (ex : 2026)"
+    )
+    
+    reconduit = st.selectbox(
+        "Reconduit",
+        ["Sélectionnez"] + reconduit_list
+    )
+    
+    cat = st.selectbox(
+        "Catégorie Produit",
+        ["Sélectionnez"] + cat_list
+    )
+    
+    subcat = st.selectbox(
+        "Sous-Catégorie Produit",
+        ["Sélectionnez"] + subcat_list
+    )
+    
+    typ = st.selectbox(
+        "Typologie Produit",
+        ["Sélectionnez"] + typ_list
+    )
+    
+    matiere = st.selectbox(
+        "Matière",
+        ["Sélectionnez"] + matiere_list
+    )
+    
+    groupe_couleur = st.selectbox(
+        "Groupe Couleur",
+        ["Sélectionnez"] + groupe_couleur_list
+    )
+    
+    type_couleur = st.selectbox(
+        "Type Couleur",
+        ["Sélectionnez"] + type_couleur_list
+    )
+    
+    couleur = st.text_input(
+        "Couleur"
+    )
+    
+    theme = st.text_input(
+        "Thème"
+    )
+    
+    mois = st.selectbox(
+        "Mois Implantation",
+        ["Sélectionnez"] + mois_list
+    )
+    
+    gamme = st.selectbox(
+        "Gamme PV",
+        ["Sélectionnez"] + gamme_list
+    )
+    
+    prix = st.number_input(
+        "Prix de Vente (€)",
+        min_value=0.0
+    )
+    
+    parc = st.selectbox(
+        "Parc Magasin",
+        ["Sélectionnez"] + parc_list
+    )
 
 if st.button("Prédire"):
 
@@ -232,3 +232,4 @@ if st.button("Prédire"):
         st.success(
             f"📦 Ventes prévisionnelles : {int(pred[0])}"
         )
+    ```
