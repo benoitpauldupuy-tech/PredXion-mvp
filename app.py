@@ -276,3 +276,89 @@ if mode == "📁 Excel":
 
             csv = df_upload.to_csv(index=False).encode("utf-8")
             st.download_button("Télécharger résultat", csv, "predictions.csv", "text/csv")
+
+# =========================
+# SCORE CONFIANCE ML
+# =========================
+
+mae_cat = {
+    "T-Shirts": 2696.23,
+    "Jupes": 2029.69,
+    "Vestes": 2016.68,
+    "Chemises": 1930.53,
+    "Pulls": 1889.54,
+    "Pantalons": 1869.48,
+    "Robes": 1620.77,
+    "Manteaux": 841.84
+}
+
+mae_typo = {
+    "Essentiel": 2107.97,
+    "Mode": 1516.86,
+    "Image": 365.82
+}
+
+def norm(x, mn, mx):
+    return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
+
+cat_score = norm(
+    mae_cat.get(cat, np.mean(list(mae_cat.values()))),
+    min(mae_cat.values()),
+    max(mae_cat.values())
+)
+
+typ_score = norm(
+    mae_typo.get(typ, np.mean(list(mae_typo.values()))),
+    min(mae_typo.values()),
+    max(mae_typo.values())
+)
+
+ml_score = (0.6 * cat_score) + (0.4 * typ_score)
+
+# =========================
+# SCORE BUSINESS (SAISON ÉQUIVALENTE)
+# =========================
+
+# moyenne sur même catégorie + même saison
+avg_same_season = df[
+    (df["Catégorie Produit"] == cat) &
+    (df["Saison"] == saison)
+]["Quantités Vendues"].mean()
+
+if np.isnan(avg_same_season):
+    stock_risk = 50  # neutral si pas de data
+else:
+    diff_stock = abs(pred[0] - avg_same_season)
+
+    # logique métier retail
+    if diff_stock <= 900:
+        stock_risk = 90   # très cohérent
+    elif diff_stock <= 1500:
+        stock_risk = 60   # acceptable
+    else:
+        stock_risk = 20   # incohérent / risque fort
+
+# =========================
+# SCORE FINAL
+# =========================
+
+final_score = (ml_score * 0.7) + (stock_risk * 0.3)
+
+# =========================
+# FEU MÉTIER
+# =========================
+
+if final_score >= 70:
+    label = "🟢 Achat sécurisé"
+elif final_score >= 40:
+    label = "🟠 À vérifier"
+else:
+    label = "🔴 Risque élevé"
+
+# =========================
+# AFFICHAGE
+# =========================
+
+st.metric("📦 Ventes prévues", f"{int(pred[0])}")
+st.metric("🎯 Score confiance", f"{int(final_score)}/100")
+st.markdown(f"### {label}")
