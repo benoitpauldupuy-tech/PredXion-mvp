@@ -22,7 +22,7 @@ st.title("📊 PredXion MVP")
 # =========================
 
 def get_list(col):
-return sorted(df[col].dropna().astype(str).unique())
+    return sorted(df[col].dropna().astype(str).unique())
 
 # =========================
 
