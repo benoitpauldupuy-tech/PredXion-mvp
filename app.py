@@ -61,7 +61,6 @@ mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
 if mode == "📊 Manuel":
 
-    ```
     saison = st.selectbox(
         "Saison",
         ["Sélectionnez"] + saison_list
@@ -232,4 +231,3 @@ if st.button("Prédire"):
         st.success(
             f"📦 Ventes prévisionnelles : {int(pred[0])}"
         )
-    ```
