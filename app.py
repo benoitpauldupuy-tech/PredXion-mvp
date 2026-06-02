@@ -272,13 +272,33 @@ if mode == "📊 Manuel":
             # LABELS
             # =========================
 
-            if final_score >= 60:
-                label = "🟢 Achat sécurisé"
-            elif final_score >= 40:
-                label = "🟠 À vérifier"
-            else:
-                label = "🔴 Risque élevé"
+            # =========================
+# ECART %
+# =========================
 
+if np.isnan(avg_last_year) or avg_last_year == 0:
+    ecart_pct = 0
+else:
+    ecart_pct = abs(pred - avg_last_year) / avg_last_year * 100
+
+# =========================
+# FEU METIER
+# =========================
+
+if final_score >= 75 or ecart_pct < 15:
+
+    feu = "🟢"
+    label = "Achat sécurisé"
+
+elif final_score < 40 or ecart_pct > 30:
+
+    feu = "🔴"
+    label = "Achat risqué"
+
+else:
+
+    feu = "🟠"
+    label = "À vérifier"
             # =========================
             # OUTPUT
             # =========================
