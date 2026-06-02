@@ -7,13 +7,13 @@ import joblib
 # CONFIG
 # =========================
 
-st.set_page_config(page_title="PredXion", layout="wide")
+st.set_page_config(page_title="PredXion MVP", layout="wide")
 
 model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 # =========================
-# UI TITLE
+# STYLE UI
 # =========================
 
 st.markdown("""
@@ -39,7 +39,7 @@ def build_features(data):
     return data
 
 # =========================
-# LISTS
+# LISTES
 # =========================
 
 saison_list = get_list("Saison")
@@ -64,7 +64,7 @@ parc_list = get_list("Parc Magasin")
 mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
 # =========================
-# EXPECTED FEATURES
+# FEATURES MODEL
 # =========================
 
 expected_cols = [
@@ -89,7 +89,7 @@ expected_cols = [
 ]
 
 # =========================
-# SCORE TABLES
+# ML SCORE BASE
 # =========================
 
 mae_cat = {
@@ -112,15 +112,14 @@ mae_typo = {
 def norm(x, mn, mx):
     return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
 
-def compute_scores(cat, typ):
-    cat_score = norm(mae_cat.get(cat, np.mean(list(mae_cat.values()))),
-                     min(mae_cat.values()), max(mae_cat.values()))
+def ml_score(cat, typ):
+    cat_s = norm(mae_cat.get(cat, np.mean(list(mae_cat.values()))),
+                 min(mae_cat.values()), max(mae_cat.values()))
 
-    typ_score = norm(mae_typo.get(typ, np.mean(list(mae_typo.values()))),
-                     min(mae_typo.values()), max(mae_typo.values()))
+    typ_s = norm(mae_typo.get(typ, np.mean(list(mae_typo.values()))),
+                 min(mae_typo.values()), max(mae_typo.values()))
 
-    ml_score = (0.6 * cat_score) + (0.4 * typ_score)
-    return ml_score
+    return 0.5 * cat_s + 0.5 * typ_s
 
 # =========================
 # MANUAL MODE
@@ -152,7 +151,8 @@ if mode == "📊 Manuel":
     if st.button("Prédire"):
 
         required = [saison, reconduit, cat, subcat, typ,
-                    matiere, groupe_couleur, type_couleur, mois, gamme, parc]
+                    matiere, groupe_couleur, type_couleur,
+                    mois, gamme, parc]
 
         if "Sélectionnez" in required:
             st.warning("⚠️ Merci de compléter tous les champs")
@@ -184,7 +184,7 @@ if mode == "📊 Manuel":
             pred = np.expm1(pred_log)
 
             # =========================
-            # BUSINESS SCORE (SAFE)
+            # BUSINESS SCORE (SAISON)
             # =========================
 
             avg_same = df[
@@ -193,29 +193,35 @@ if mode == "📊 Manuel":
             ]["Quantités Vendues"].mean()
 
             if np.isnan(avg_same):
-                stock_score = 50
+                business_score = 60
             else:
                 diff = abs(pred[0] - avg_same)
 
-                if diff <= 900:
-                    stock_score = 90
-                elif diff <= 1500:
-                    stock_score = 60
+                if diff <= 1100:
+                    business_score = 90
+                elif diff <= 1900:
+                    business_score = 60
+                elif diff <= 3000:
+                    business_score = 35
                 else:
-                    stock_score = 20
+                    business_score = 15
 
-            ml_score = compute_scores(cat, typ)
-            final_score = (0.7 * ml_score) + (0.3 * stock_score)
+            # =========================
+            # FINAL SCORE
+            # =========================
 
-            if final_score >= 70:
+            final = 0.5 * ml_score(cat, typ) + 0.5 * business_score
+            final = max(0, min(100, final))
+
+            if final >= 70:
                 label = "🟢 Achat sécurisé"
-            elif final_score >= 40:
+            elif final >= 45:
                 label = "🟠 À vérifier"
             else:
                 label = "🔴 Risque élevé"
 
-            st.metric("📦 Ventes prévues", f"{int(pred[0])}")
-            st.metric("🎯 Score confiance", f"{int(final_score)}/100")
+            st.metric("📦 Ventes prévues", f"{int(pred[0]):,}".replace(",", " "))
+            st.metric("🎯 Score confiance", f"{int(final)}/100")
             st.markdown(f"### {label}")
 
 # =========================
@@ -228,18 +234,18 @@ if mode == "📁 Excel":
 
     if file:
 
-        df_upload = pd.read_excel(file)
+        df_up = pd.read_excel(file)
 
         if st.button("Lancer prédictions"):
 
-            df_upload = build_features(df_upload)
-            df_upload = df_upload[expected_cols]
+            df_up = build_features(df_up)
+            df_up = df_up[expected_cols]
 
-            preds = np.expm1(model.predict(df_upload))
-            df_upload["Prediction"] = preds
+            preds = np.expm1(model.predict(df_up))
+            df_up["Prediction"] = preds
 
-            st.success("OK")
-            st.dataframe(df_upload)
+            st.success("Prédictions terminées")
+            st.dataframe(df_up)
 
-            csv = df_upload.to_csv(index=False).encode("utf-8")
+            csv = df_up.to_csv(index=False).encode("utf-8")
             st.download_button("Télécharger", csv, "predictions.csv", "text/csv")
