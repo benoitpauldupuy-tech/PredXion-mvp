@@ -13,7 +13,7 @@ model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 # =========================
-# STYLE
+# HEADER UI
 # =========================
 
 st.markdown("""
@@ -157,7 +157,7 @@ if mode == "📊 Manuel":
         else:
 
             # =========================
-            # INPUT
+            # INPUT DATA
             # =========================
 
             input_df = pd.DataFrame([{
@@ -189,7 +189,7 @@ if mode == "📊 Manuel":
             pred = np.expm1(pred_log)[0]
 
             # =========================
-            # BUSINESS BENCHMARK
+            # HISTORICAL BENCHMARK
             # =========================
 
             avg_last_year = df[
@@ -204,22 +204,16 @@ if mode == "📊 Manuel":
                 ratio = pred / avg_last_year
 
             # =========================
-            # BUSINESS SCORE (CLEAN)
+            # BUSINESS SCORE (FIXED DISTRIBUTION)
             # =========================
 
             if np.isnan(avg_last_year):
                 business_score = 65
             else:
-                diff = abs(pred - avg_last_year)
+                log_ratio = np.log1p(ratio)
 
-                if diff <= 1100:
-                    business_score = 90
-                elif diff <= 1900:
-                    business_score = 70
-                elif diff <= 3000:
-                    business_score = 45
-                else:
-                    business_score = 20
+                business_score = 100 - abs(log_ratio) * 55
+                business_score = max(0, min(100, business_score))
 
             # =========================
             # ML SCORE
@@ -228,44 +222,46 @@ if mode == "📊 Manuel":
             ml_s = ml_score(cat, typ)
 
             # =========================
-            # FINAL SCORE
+            # FINAL SCORE (balanced)
             # =========================
 
-            final_score = 0.5 * ml_s + 0.5 * business_score
+            raw_score = 0.45 * ml_s + 0.55 * business_score
+
+            final_score = 100 * (1 / (1 + np.exp(-(raw_score - 50) / 10)))
             final_score = max(0, min(100, final_score))
 
             # =========================
             # LABELS
             # =========================
 
-            if final_score >= 65:
+            if final_score >= 60:
                 label = "🟢 Achat sécurisé"
-            elif final_score >= 45:
+            elif final_score >= 40:
                 label = "🟠 À vérifier"
             else:
                 label = "🔴 Risque élevé"
 
             # =========================
-            # DISPLAY
+            # OUTPUT
             # =========================
 
             st.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
             st.metric("🎯 Score confiance", f"{int(final_score)}/100")
             st.markdown(f"### {label}")
 
-            st.markdown("### 📊 Benchmark historique")
+            st.markdown("### 📊 Benchmark marché")
 
             col1, col2, col3 = st.columns(3)
 
             col1.metric("IA", f"{int(pred):,}".replace(",", " "))
 
             col2.metric(
-                "Moyenne année N-1",
+                "Historique N-1",
                 "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}".replace(",", " ")
             )
 
             col3.metric(
-                "Ratio",
+                "Ratio marché",
                 f"{ratio:.2f}"
             )
 
