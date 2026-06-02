@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 
 # =========================
-# CONFIG
+# CONFIG UI
 # =========================
 
 st.set_page_config(page_title="PredXion MVP", layout="wide")
@@ -47,18 +47,22 @@ h1,h2,h3,p,label{
 </style>
 """, unsafe_allow_html=True)
 
+# =========================
+# LOAD
+# =========================
+
 model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 # =========================
-# HEADER UI
+# HEADER
 # =========================
 
 st.markdown("""
-<h1 style='text-align:center;color:#D4AF37;font-size:60px;font-weight:300;letter-spacing:4px;margin-top:40px;'>
+<h1 style='text-align:center;color:#D4AF37;font-size:60px;margin-top:40px;'>
 PredXion
 </h1>
-<p style='text-align:center;color:#ccc;font-size:16px;letter-spacing:2px;'>
+<p style='text-align:center;color:#ccc;'>
 RETAIL FORECASTING PLATFORM
 </p>
 """, unsafe_allow_html=True)
@@ -71,6 +75,7 @@ def get_list(col):
     return sorted(df[col].dropna().astype(str).unique())
 
 def build_features(data):
+    data = data.copy()
     data["Cat_Saison"] = data["Catégorie Produit"].astype(str) + "_" + data["Saison"].astype(str)
     data["Typo_Saison"] = data["Typologie Produit"].astype(str) + "_" + data["Saison"].astype(str)
     data["Cat_GammePV"] = data["Catégorie Produit"].astype(str) + "_" + data["Gamme PV"].astype(str)
@@ -131,33 +136,15 @@ parc_list = get_list("Parc Magasin")
 
 mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
-# =========================
-# FEATURES MODEL
-# =========================
-
 expected_cols = [
-    "Saison",
-    "Années",
-    "Reconduit",
-    "Catégorie Produit",
-    "Sous-Catégorie Produit",
-    "Typologie Produit",
-    "Matière",
-    "Groupe Couleur",
-    "Type Couleur",
-    "Couleur",
-    "Thème",
-    "Mois Implantation",
-    "Gamme PV",
-    "Prix de Vente",
-    "Parc Magasin",
-    "Cat_Saison",
-    "Typo_Saison",
-    "Cat_GammePV"
+    "Saison","Années","Reconduit","Catégorie Produit","Sous-Catégorie Produit",
+    "Typologie Produit","Matière","Groupe Couleur","Type Couleur","Couleur",
+    "Thème","Mois Implantation","Gamme PV","Prix de Vente","Parc Magasin",
+    "Cat_Saison","Typo_Saison","Cat_GammePV"
 ]
 
 # =========================
-# MANUAL MODE
+# MANUEL
 # =========================
 
 if mode == "📊 Manuel":
@@ -185,143 +172,81 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-        required = [saison, reconduit, cat, subcat, typ,
-                    matiere, groupe_couleur, type_couleur,
-                    mois, gamme, parc]
+        if "Sélectionnez" in [saison, reconduit, cat, subcat, typ, matiere,
+                              groupe_couleur, type_couleur, mois, gamme, parc]:
+            st.warning("⚠️ Complète tous les champs")
+            st.stop()
 
-        if "Sélectionnez" in required:
-            st.warning("⚠️ Merci de compléter tous les champs")
+        input_df = pd.DataFrame([{
+            "Saison": saison,
+            "Années": annees,
+            "Reconduit": reconduit,
+            "Catégorie Produit": cat,
+            "Sous-Catégorie Produit": subcat,
+            "Typologie Produit": typ,
+            "Matière": matiere,
+            "Groupe Couleur": groupe_couleur,
+            "Type Couleur": type_couleur,
+            "Couleur": couleur,
+            "Thème": theme,
+            "Mois Implantation": mois,
+            "Gamme PV": gamme,
+            "Prix de Vente": prix,
+            "Parc Magasin": parc
+        }])
 
+        input_df = build_features(input_df)
+        input_df = input_df[expected_cols]
+
+        pred = float(np.expm1(model.predict(input_df)[0]))
+
+        avg_last_year = df[
+            (df["Catégorie Produit"] == cat) &
+            (df["Saison"] == saison)
+        ]["Quantités Vendues"].mean()
+
+        if np.isnan(avg_last_year):
+            ratio = 1
+            ecart_pct = 0
         else:
+            ratio = pred / avg_last_year
+            ecart_pct = abs(pred - avg_last_year) / avg_last_year * 100
 
-            # =========================
-            # INPUT DATA
-            # =========================
+        # =========================
+        # SCORE STABLE (IMPORTANT FIX)
+        # =========================
 
-            input_df = pd.DataFrame([{
-                "Saison": saison,
-                "Années": annees,
-                "Reconduit": reconduit,
-                "Catégorie Produit": cat,
-                "Sous-Catégorie Produit": subcat,
-                "Typologie Produit": typ,
-                "Matière": matiere,
-                "Groupe Couleur": groupe_couleur,
-                "Type Couleur": type_couleur,
-                "Couleur": couleur,
-                "Thème": theme,
-                "Mois Implantation": mois,
-                "Gamme PV": gamme,
-                "Prix de Vente": prix,
-                "Parc Magasin": parc
-            }])
+        ml_s = ml_score(cat, typ)
 
-            input_df = build_features(input_df)
-            input_df = input_df[expected_cols]
+        business_score = 100 - min(100, ecart_pct * 1.2)
 
-            # =========================
-            # PREDICTION
-            # =========================
+        final_score = (0.6 * ml_s + 0.4 * business_score)
 
-            pred_log = model.predict(input_df)
-            pred = np.expm1(pred_log)[0]
+        # =========================
+        # FEU METIER CORRIGÉ
+        # =========================
 
-            # =========================
-            # HISTORICAL BENCHMARK
-            # =========================
+        if final_score > 75 or ecart_pct < 15:
+            feu = "🟢"
+            label = "Achat sécurisé"
+        elif final_score < 40 or ecart_pct > 30:
+            feu = "🔴"
+            label = "Achat risqué"
+        else:
+            feu = "🟠"
+            label = "À vérifier"
 
-            avg_last_year = df[
-                (df["Catégorie Produit"] == cat) &
-                (df["Saison"] == saison)
-            ]["Quantités Vendues"].mean()
+        # =========================
+        # UI FINAL
+        # =========================
 
-            # ratio
-            if np.isnan(avg_last_year) or avg_last_year == 0:
-                ratio = 1
-            else:
-                ratio = pred / avg_last_year
+        col1, col2, col3 = st.columns(3)
 
-            # =========================
-            # BUSINESS SCORE (FIXED DISTRIBUTION)
-            # =========================
+        col1.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
+        col2.metric("🎯 Score confiance", f"{int(final_score)}/100")
+        col3.metric("📊 Historique N-1", "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}")
 
-            if np.isnan(avg_last_year):
-                business_score = 65
-            else:
-                log_ratio = np.log1p(ratio)
-
-                business_score = 100 - abs(log_ratio) * 55
-                business_score = max(0, min(100, business_score))
-
-            # =========================
-            # ML SCORE
-            # =========================
-
-            ml_s = ml_score(cat, typ)
-
-            # =========================
-            # FINAL SCORE (balanced)
-            # =========================
-
-            raw_score = 0.45 * ml_s + 0.55 * business_score
-
-            final_score = 100 * (1 / (1 + np.exp(-(raw_score - 50) / 10)))
-            final_score = max(0, min(100, final_score))
-
-            # =========================
-            # LABELS
-            # =========================
-
-            # =========================
-# ECART %
-# =========================
-
-if np.isnan(avg_last_year) or avg_last_year == 0:
-    ecart_pct = 0
-else:
-    ecart_pct = abs(pred - avg_last_year) / avg_last_year * 100
-
-# =========================
-# FEU METIER
-# =========================
-
-if final_score >= 75 or ecart_pct < 15:
-
-    feu = "🟢"
-    label = "Achat sécurisé"
-
-elif final_score < 40 or ecart_pct > 30:
-
-    feu = "🔴"
-    label = "Achat risqué"
-
-else:
-
-    feu = "🟠"
-    label = "À vérifier"
-            # =========================
-            # OUTPUT
-            # =========================
-
-            st.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
-            st.metric("🎯 Score confiance", f"{int(final_score)}/100")
-            st.markdown(f"### {label}")
-
-            st.markdown("### 📊 Benchmark marché")
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric("IA", f"{int(pred):,}".replace(",", " "))
-
-            col2.metric(
-                "Historique N-1",
-                "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}".replace(",", " ")
-            )
-
-            col3.metric(
-                "Ratio marché",
-                f"{ratio:.2f}"
-            )
+        st.markdown(f"## {feu} {label}")
 
 # =========================
 # EXCEL MODE
@@ -329,7 +254,7 @@ else:
 
 if mode == "📁 Excel":
 
-    file = st.file_uploader("Uploader Excel", type=["xlsx"])
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
     if file:
 
@@ -343,8 +268,9 @@ if mode == "📁 Excel":
             preds = np.expm1(model.predict(df_up))
             df_up["Prediction"] = preds
 
-            st.success("Prédictions terminées")
+            df_up["Feu"] = np.where(preds > preds.mean(), "🟢", "🟠")
+
             st.dataframe(df_up)
 
             csv = df_up.to_csv(index=False).encode("utf-8")
-            st.download_button("Télécharger", csv, "predictions.csv", "text/csv")
+            st.download_button("Télécharger", csv, "predictions.csv")
