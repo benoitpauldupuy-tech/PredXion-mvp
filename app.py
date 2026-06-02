@@ -229,24 +229,79 @@ if mode == "📊 Manuel":
         if final_score > 75 or ecart_pct < 15:
             feu = "🟢"
             label = "Achat sécurisé"
+            mode_reco = "GREEN"
+        
         elif final_score < 40 or ecart_pct > 30:
             feu = "🔴"
             label = "Achat risqué"
+            mode_reco = "RED"
+        
         else:
             feu = "🟠"
             label = "À vérifier"
-
+            mode_reco = "ORANGE"
+        
         # =========================
-        # UI FINAL
+        # RECOMMANDATION ACHAT (RULE ENGINE)
         # =========================
-
-        col1, col2, col3 = st.columns(3)
-
+        
+        if np.isnan(avg_last_year):
+            avg_last_year = 0
+        
+        if mode_reco == "GREEN":
+            reco = pred
+        
+        elif mode_reco == "ORANGE":
+            reco = (pred + avg_last_year) / 2
+        
+        else:  # RED
+            reco = avg_last_year * 0.90  # 90% du marché historique (prudence)
+        
+        commentaire = (
+            f"{label} | "
+            f"écart vs marché: {ecart_pct:.1f}% | "
+            f"ratio: {ratio:.2f}"
+        )
+        
+        # =========================
+        # UI - LIGNE 1 (ALIGNÉE)
+        # =========================
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
         col1.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
         col2.metric("🎯 Score confiance", f"{int(final_score)}/100")
         col3.metric("📊 Historique N-1", "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}")
-
-        st.markdown(f"## {feu} {label}")
+        col4.metric("📈 Ratio marché", f"{ratio:.2f}")
+        
+        # =========================
+        # UI - LIGNE 2 (ALIGNÉE)
+        # =========================
+        
+        col1, col2 = st.columns([1, 2])
+        
+        col1.markdown(f"## {feu} {label}")
+        
+        col2.metric(
+            "🧠 Recommandation achat",
+            f"{int(reco):,}".replace(",", " ")
+        )
+        
+        st.markdown(
+            f"""
+            <div style="
+                margin-top:10px;
+                padding:12px;
+                border-radius:12px;
+                background:rgba(255,255,255,0.08);
+                color:white;
+                font-size:14px;
+            ">
+                💬 {commentaire}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 # =========================
 # EXCEL MODE
