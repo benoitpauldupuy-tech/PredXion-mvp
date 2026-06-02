@@ -9,6 +9,44 @@ import joblib
 
 st.set_page_config(page_title="PredXion MVP", layout="wide")
 
+st.markdown("""
+<style>
+
+.stApp {
+    background: linear-gradient(
+        135deg,
+        #0f172a 0%,
+        #172554 40%,
+        #1e293b 100%
+    );
+}
+
+.block-container{
+    padding-top:2rem;
+}
+
+[data-testid="stMetric"]{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:16px;
+    padding:15px;
+}
+
+h1,h2,h3,p,label{
+    color:white !important;
+}
+
+.stButton>button{
+    background:#D4AF37;
+    color:black;
+    font-weight:bold;
+    border:none;
+    border-radius:10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
