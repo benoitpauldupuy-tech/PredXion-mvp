@@ -13,7 +13,7 @@ model = joblib.load("model.pkl")
 df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 
 # =========================
-# STYLE UI
+# STYLE
 # =========================
 
 st.markdown("""
@@ -37,6 +37,36 @@ def build_features(data):
     data["Typo_Saison"] = data["Typologie Produit"].astype(str) + "_" + data["Saison"].astype(str)
     data["Cat_GammePV"] = data["Catégorie Produit"].astype(str) + "_" + data["Gamme PV"].astype(str)
     return data
+
+def ml_score(cat, typ):
+
+    mae_cat = {
+        "T-Shirts": 2696.23,
+        "Jupes": 2029.69,
+        "Vestes": 2016.68,
+        "Chemises": 1930.53,
+        "Pulls": 1889.54,
+        "Pantalons": 1869.48,
+        "Robes": 1620.77,
+        "Manteaux": 841.84
+    }
+
+    mae_typo = {
+        "Essentiel": 2107.97,
+        "Mode": 1516.86,
+        "Image": 365.82
+    }
+
+    def norm(x, mn, mx):
+        return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
+
+    cat_s = norm(mae_cat.get(cat, np.mean(list(mae_cat.values()))),
+                 min(mae_cat.values()), max(mae_cat.values()))
+
+    typ_s = norm(mae_typo.get(typ, np.mean(list(mae_typo.values()))),
+                 min(mae_typo.values()), max(mae_typo.values()))
+
+    return 0.5 * cat_s + 0.5 * typ_s
 
 # =========================
 # LISTES
@@ -89,39 +119,6 @@ expected_cols = [
 ]
 
 # =========================
-# ML SCORE BASE
-# =========================
-
-mae_cat = {
-    "T-Shirts": 2696.23,
-    "Jupes": 2029.69,
-    "Vestes": 2016.68,
-    "Chemises": 1930.53,
-    "Pulls": 1889.54,
-    "Pantalons": 1869.48,
-    "Robes": 1620.77,
-    "Manteaux": 841.84
-}
-
-mae_typo = {
-    "Essentiel": 2107.97,
-    "Mode": 1516.86,
-    "Image": 365.82
-}
-
-def norm(x, mn, mx):
-    return 100 * (1 - (x - mn) / (mx - mn + 1e-9))
-
-def ml_score(cat, typ):
-    cat_s = norm(mae_cat.get(cat, np.mean(list(mae_cat.values()))),
-                 min(mae_cat.values()), max(mae_cat.values()))
-
-    typ_s = norm(mae_typo.get(typ, np.mean(list(mae_typo.values()))),
-                 min(mae_typo.values()), max(mae_typo.values()))
-
-    return 0.5 * cat_s + 0.5 * typ_s
-
-# =========================
 # MANUAL MODE
 # =========================
 
@@ -159,6 +156,10 @@ if mode == "📊 Manuel":
 
         else:
 
+            # =========================
+            # INPUT
+            # =========================
+
             input_df = pd.DataFrame([{
                 "Saison": saison,
                 "Années": annees,
@@ -180,49 +181,93 @@ if mode == "📊 Manuel":
             input_df = build_features(input_df)
             input_df = input_df[expected_cols]
 
+            # =========================
+            # PREDICTION
+            # =========================
+
             pred_log = model.predict(input_df)
-            pred = np.expm1(pred_log)
+            pred = np.expm1(pred_log)[0]
 
             # =========================
-            # BUSINESS SCORE (SAISON)
+            # BUSINESS BENCHMARK
             # =========================
 
-            avg_same = df[
+            avg_last_year = df[
                 (df["Catégorie Produit"] == cat) &
                 (df["Saison"] == saison)
             ]["Quantités Vendues"].mean()
 
-            if np.isnan(avg_same):
-                business_score = 60
+            # ratio
+            if np.isnan(avg_last_year) or avg_last_year == 0:
+                ratio = 1
             else:
-                diff = abs(pred[0] - avg_same)
+                ratio = pred / avg_last_year
+
+            # =========================
+            # BUSINESS SCORE (CLEAN)
+            # =========================
+
+            if np.isnan(avg_last_year):
+                business_score = 65
+            else:
+                diff = abs(pred - avg_last_year)
 
                 if diff <= 1100:
                     business_score = 90
                 elif diff <= 1900:
-                    business_score = 60
+                    business_score = 70
                 elif diff <= 3000:
-                    business_score = 35
+                    business_score = 45
                 else:
-                    business_score = 15
+                    business_score = 20
+
+            # =========================
+            # ML SCORE
+            # =========================
+
+            ml_s = ml_score(cat, typ)
 
             # =========================
             # FINAL SCORE
             # =========================
 
-            final = 0.5 * ml_score(cat, typ) + 0.5 * business_score
-            final = max(0, min(100, final))
+            final_score = 0.5 * ml_s + 0.5 * business_score
+            final_score = max(0, min(100, final_score))
 
-            if final >= 70:
+            # =========================
+            # LABELS
+            # =========================
+
+            if final_score >= 65:
                 label = "🟢 Achat sécurisé"
-            elif final >= 45:
+            elif final_score >= 45:
                 label = "🟠 À vérifier"
             else:
                 label = "🔴 Risque élevé"
 
-            st.metric("📦 Ventes prévues", f"{int(pred[0]):,}".replace(",", " "))
-            st.metric("🎯 Score confiance", f"{int(final)}/100")
+            # =========================
+            # DISPLAY
+            # =========================
+
+            st.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
+            st.metric("🎯 Score confiance", f"{int(final_score)}/100")
             st.markdown(f"### {label}")
+
+            st.markdown("### 📊 Benchmark historique")
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric("IA", f"{int(pred):,}".replace(",", " "))
+
+            col2.metric(
+                "Moyenne année N-1",
+                "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}".replace(",", " ")
+            )
+
+            col3.metric(
+                "Ratio",
+                f"{ratio:.2f}"
+            )
 
 # =========================
 # EXCEL MODE
