@@ -175,7 +175,7 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-    required = [
+        required = [
         saison, reconduit, cat, subcat, typ,
         matiere, groupe_couleur, type_couleur,
         mois, gamme, parc
