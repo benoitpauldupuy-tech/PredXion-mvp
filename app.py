@@ -175,158 +175,164 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-        required = [saison, reconduit, cat, subcat, typ,
-                    matiere, groupe_couleur, type_couleur,
-                    mois, gamme, parc]
+    required = [
+        saison, reconduit, cat, subcat, typ,
+        matiere, groupe_couleur, type_couleur,
+        mois, gamme, parc
+    ]
 
-        if "Sélectionnez" in required:
-            st.warning("Merci de compléter tous les champs")
+    if "Sélectionnez" in required:
+        st.warning("⚠️ Merci de compléter tous les champs")
 
+    else:
+
+        # =========================
+        # INPUT DATA
+        # =========================
+
+        input_df = pd.DataFrame([{
+            "Saison": saison,
+            "Années": annees,
+            "Reconduit": reconduit,
+            "Catégorie Produit": cat,
+            "Sous-Catégorie Produit": subcat,
+            "Typologie Produit": typ,
+            "Matière": matiere,
+            "Groupe Couleur": groupe_couleur,
+            "Type Couleur": type_couleur,
+            "Couleur": couleur,
+            "Thème": theme,
+            "Mois Implantation": mois,
+            "Gamme PV": gamme,
+            "Prix de Vente": prix,
+            "Parc Magasin": parc
+        }])
+
+        input_df = build_features(input_df)
+        input_df = input_df[expected_cols]
+
+        # =========================
+        # PREDICTION IA
+        # =========================
+
+        pred = np.expm1(model.predict(input_df))[0]
+
+        # =========================
+        # HISTORIQUE 3 ANS (SAISON + CATÉGORIE)
+        # =========================
+
+        df_hist = df[
+            (df["Catégorie Produit"] == cat) &
+            (df["Saison"] == saison)
+        ].copy()
+
+        df_hist["Années"] = pd.to_numeric(df_hist["Années"], errors="coerce")
+
+        v25 = df_hist[df_hist["Années"] == 2025]["Quantités Vendues"].mean()
+        v24 = df_hist[df_hist["Années"] == 2024]["Quantités Vendues"].mean()
+        v23 = df_hist[df_hist["Années"] == 2023]["Quantités Vendues"].mean()
+
+        ref_3ans = (
+            (0 if np.isnan(v25) else v25 * 0.5) +
+            (0 if np.isnan(v24) else v24 * 0.3) +
+            (0 if np.isnan(v23) else v23 * 0.2)
+        )
+
+        if np.isnan(ref_3ans) or ref_3ans == 0:
+            ref_3ans = pred
+
+        # =========================
+        # TREND 3 ANS
+        # =========================
+
+        trend = 0
+        if not np.isnan(v23) and not np.isnan(v25):
+            trend = v25 - v23
+
+        trend_arrow = "🟢 ↑" if trend > 0 else "🔴 ↓" if trend < 0 else "➖"
+
+        # =========================
+        # GAP ANALYSIS
+        # =========================
+
+        gap = pred - ref_3ans
+        gap_abs = abs(gap)
+
+        # =========================
+        # SCORE SIMPLE & LISIBLE
+        # =========================
+
+        if gap_abs < 500:
+            business_score = 90
+        elif gap_abs < 1000:
+            business_score = 75
+        elif gap_abs < 1500:
+            business_score = 60
         else:
+            business_score = 40
 
-            input_df = pd.DataFrame([{
-                "Saison": saison,
-                "Années": annees,
-                "Reconduit": reconduit,
-                "Catégorie Produit": cat,
-                "Sous-Catégorie Produit": subcat,
-                "Typologie Produit": typ,
-                "Matière": matiere,
-                "Groupe Couleur": groupe_couleur,
-                "Type Couleur": type_couleur,
-                "Couleur": couleur,
-                "Thème": theme,
-                "Mois Implantation": mois,
-                "Gamme PV": gamme,
-                "Prix de Vente": prix,
-                "Parc Magasin": parc
-            }])
+        ml_s = ml_score(cat, typ)
 
-            input_df = build_features(input_df)
-            input_df = input_df[expected_cols]
+        final_score = 0.5 * business_score + 0.5 * ml_s
 
-            pred = np.expm1(model.predict(input_df))[0]
-
-            # =========================
-            # HISTORIQUE 3 ANS PONDÉRÉ
-            # =========================
-
-            hist = df[
-                (df["Catégorie Produit"] == cat) &
-                (df["Saison"] == saison)
-            ]
-
-            hist["Années"] = pd.to_numeric(hist["Années"], errors="coerce")
-
-            v25 = hist[hist["Années"] == 2025]["Quantités Vendues"].mean()
-            v24 = hist[hist["Années"] == 2024]["Quantités Vendues"].mean()
-            v23 = hist[hist["Années"] == 2023]["Quantités Vendues"].mean()
-
-            historique = (
-                (0 if np.isnan(v25) else v25 * 0.5) +
-                (0 if np.isnan(v24) else v24 * 0.3) +
-                (0 if np.isnan(v23) else v23 * 0.2)
-            )
-
-            if np.isnan(historique) or historique == 0:
-                historique = pred
-
-            # =========================
-            # METRICS
-            # =========================
-
-            ratio = pred / (historique + 1e-9)
-            ecart_pct = abs(pred - historique) / (historique + 1e-9) * 100
-
-            ml_s = ml_score(cat, typ)
-
-            # =========================
-            # SCORE
-            # =========================
-
-            if ecart_pct < 10:
-                business = 95
-            elif ecart_pct < 20:
-                business = 85
-            elif ecart_pct < 30:
-                business = 70
-            elif ecart_pct < 40:
-                business = 55
-            else:
-                business = 35
-
-            final_score = 0.55 * business + 0.45 * ml_s
-
-            # =========================
-            # FEU
         # =========================
-        # FEU (RULE STRICTE)
+        # FEU MÉTIER (STRICT)
         # =========================
-        
+
         if final_score >= 75:
             feu, label = "🟢", "Achat sécurisé"
-        
+
         elif final_score >= 40:
             feu, label = "🟠", "À vérifier"
-        
+
         else:
             feu, label = "🔴", "Achat risqué"
-        
+
         # =========================
-        # RECOMMANDATION
+        # RECOMMANDATION (LOGIQUE COHERENTE)
         # =========================
-        
-        if feu == "🟢":
+
+        if gap_abs < 500:
             reco = pred
-        
-        elif feu == "🟠":
-            reco = (pred + historique) / 2
-        
+            risk_text = "Alignement fort avec marché historique"
+
+        elif trend > 0:
+            reco = (pred + ref_3ans) / 2
+            risk_text = "Marché en croissance → ajustement haussier"
+
         else:
-            reco = historique * (0.9 if pred < historique else 1.1)
-        
+            reco = (pred + ref_3ans) / 2
+            risk_text = "Marché en baisse → ajustement prudent"
+
         # =========================
         # COMMENTAIRE MÉTIER
         # =========================
-        
-        if final_score >= 75:
-            commentaire = "Prévision cohérente avec le marché et la saisonnalité."
-        
-        elif final_score >= 40:
-        
-            if pred > historique:
-                commentaire = "Signal de hausse vs historique saisonnier. Vérifier capacité stock."
-            else:
-                commentaire = "Baisse vs historique saisonnier. Risque de surstock potentiel."
-        
-        else:
-        
-            if pred > historique:
-                commentaire = "Désalignement fort avec historique. Forte demande attendue vs capacité planifiée."
-            else:
-                commentaire = "Chute significative vs historique. Risque élevé de surstock."
-        
+
+        commentaire = (
+            f"Écart vs marché : {gap_abs:.0f} | "
+            f"Tendance 3 ans : {trend_arrow} | "
+            f"{risk_text}"
+        )
+
         # =========================
-        # UI (RENOMMAGE IMPORTANT)
+        # UI CLEAN ALIGNÉE
         # =========================
-        
+
         c1, c2, c3, c4 = st.columns(4)
-        
+
         c1.metric("Ventes prévues", f"{int(pred):,}")
         c2.metric("Score confiance", f"{int(final_score)}/100")
-        c3.metric("Référence saison 3 ans", f"{int(historique):,}")
-        c4.metric("Ratio marché", f"{ratio:.2f}")
-        
+        c3.metric("Référence saison 3 ans", f"{int(ref_3ans):,}", delta=trend_arrow)
+        c4.metric("Ratio marché", f"{pred/(ref_3ans+1e-9):.2f}")
+
         c5, c6 = st.columns([1, 2])
-        
+
         with c5:
             st.markdown(f"## {feu} {label}")
-        
+
         with c6:
             st.metric("Recommandation achat", f"{int(reco):,}")
-        
-        # COMMENTAIRE (IMPORTANT UX)
-        st.markdown("### 💬 Analyse métier")
+
         st.info(commentaire)
 
 # =========================
