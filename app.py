@@ -194,7 +194,7 @@ missing = [k for k, v in required.items() if v in ["Sélectionnez", "", None]]
 if len(missing) > 0:
     st.warning(f"⚠️ Champs manquants : {', '.join(missing)}")
 
-    else:
+else:
 
         # =========================
         # INPUT DATA
