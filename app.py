@@ -25,22 +25,21 @@ st.markdown("""
     padding-top:2rem;
 }
 
+h1,h2,h3,p,label {
+    color:white !important;
+}
+
 [data-testid="stMetric"]{
     background:rgba(255,255,255,0.08);
     border:1px solid rgba(255,255,255,0.15);
     border-radius:16px;
-    padding:15px;
-}
-
-h1,h2,h3,p,label{
-    color:white !important;
+    padding:12px;
 }
 
 .stButton>button{
     background:#D4AF37;
     color:black;
     font-weight:bold;
-    border:none;
     border-radius:10px;
 }
 
@@ -48,7 +47,7 @@ h1,h2,h3,p,label{
 """, unsafe_allow_html=True)
 
 # =========================
-# LOAD
+# LOAD MODEL + DATA
 # =========================
 
 model = joblib.load("model.pkl")
@@ -59,10 +58,10 @@ df = pd.read_excel("BDD_Ventes_NafNaf_MachineLearning.xlsx")
 # =========================
 
 st.markdown("""
-<h1 style='text-align:center;color:#D4AF37;font-size:60px;margin-top:40px;'>
+<h1 style='text-align:center;color:#D4AF37;font-size:55px;margin-top:30px;'>
 PredXion
 </h1>
-<p style='text-align:center;color:#ccc;'>
+<p style='text-align:center;color:#d1d5db;margin-bottom:30px;'>
 RETAIL FORECASTING PLATFORM
 </p>
 """, unsafe_allow_html=True)
@@ -75,7 +74,6 @@ def get_list(col):
     return sorted(df[col].dropna().astype(str).unique())
 
 def build_features(data):
-    data = data.copy()
     data["Cat_Saison"] = data["Catégorie Produit"].astype(str) + "_" + data["Saison"].astype(str)
     data["Typo_Saison"] = data["Typologie Produit"].astype(str) + "_" + data["Saison"].astype(str)
     data["Cat_GammePV"] = data["Catégorie Produit"].astype(str) + "_" + data["Gamme PV"].astype(str)
@@ -136,11 +134,16 @@ parc_list = get_list("Parc Magasin")
 
 mode = st.radio("Mode", ["📊 Manuel", "📁 Excel"])
 
+# =========================
+# FEATURES MODEL
+# =========================
+
 expected_cols = [
-    "Saison","Années","Reconduit","Catégorie Produit","Sous-Catégorie Produit",
-    "Typologie Produit","Matière","Groupe Couleur","Type Couleur","Couleur",
-    "Thème","Mois Implantation","Gamme PV","Prix de Vente","Parc Magasin",
-    "Cat_Saison","Typo_Saison","Cat_GammePV"
+    "Saison","Années","Reconduit","Catégorie Produit",
+    "Sous-Catégorie Produit","Typologie Produit","Matière",
+    "Groupe Couleur","Type Couleur","Couleur","Thème",
+    "Mois Implantation","Gamme PV","Prix de Vente",
+    "Parc Magasin","Cat_Saison","Typo_Saison","Cat_GammePV"
 ]
 
 # =========================
@@ -172,136 +175,133 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-        if "Sélectionnez" in [saison, reconduit, cat, subcat, typ, matiere,
-                              groupe_couleur, type_couleur, mois, gamme, parc]:
-            st.warning("⚠️ Complète tous les champs")
-            st.stop()
+        required = [saison, reconduit, cat, subcat, typ,
+                    matiere, groupe_couleur, type_couleur,
+                    mois, gamme, parc]
 
-        input_df = pd.DataFrame([{
-            "Saison": saison,
-            "Années": annees,
-            "Reconduit": reconduit,
-            "Catégorie Produit": cat,
-            "Sous-Catégorie Produit": subcat,
-            "Typologie Produit": typ,
-            "Matière": matiere,
-            "Groupe Couleur": groupe_couleur,
-            "Type Couleur": type_couleur,
-            "Couleur": couleur,
-            "Thème": theme,
-            "Mois Implantation": mois,
-            "Gamme PV": gamme,
-            "Prix de Vente": prix,
-            "Parc Magasin": parc
-        }])
+        if "Sélectionnez" in required:
+            st.warning("Merci de compléter tous les champs")
 
-        input_df = build_features(input_df)
-        input_df = input_df[expected_cols]
-
-        pred = float(np.expm1(model.predict(input_df)[0]))
-
-        avg_last_year = df[
-            (df["Catégorie Produit"] == cat) &
-            (df["Saison"] == saison)
-        ]["Quantités Vendues"].mean()
-
-        if np.isnan(avg_last_year):
-            ratio = 1
-            ecart_pct = 0
         else:
-            ratio = pred / avg_last_year
-            ecart_pct = abs(pred - avg_last_year) / avg_last_year * 100
 
-        # =========================
-        # SCORE STABLE (IMPORTANT FIX)
-        # =========================
+            input_df = pd.DataFrame([{
+                "Saison": saison,
+                "Années": annees,
+                "Reconduit": reconduit,
+                "Catégorie Produit": cat,
+                "Sous-Catégorie Produit": subcat,
+                "Typologie Produit": typ,
+                "Matière": matiere,
+                "Groupe Couleur": groupe_couleur,
+                "Type Couleur": type_couleur,
+                "Couleur": couleur,
+                "Thème": theme,
+                "Mois Implantation": mois,
+                "Gamme PV": gamme,
+                "Prix de Vente": prix,
+                "Parc Magasin": parc
+            }])
 
-        ml_s = ml_score(cat, typ)
+            input_df = build_features(input_df)
+            input_df = input_df[expected_cols]
 
-        business_score = 100 - min(100, ecart_pct * 1.2)
+            pred = np.expm1(model.predict(input_df))[0]
 
-        final_score = (0.6 * ml_s + 0.4 * business_score)
+            # =========================
+            # HISTORIQUE 3 ANS PONDÉRÉ
+            # =========================
 
-        # =========================
-        # FEU METIER CORRIGÉ
-        # =========================
+            hist = df[
+                (df["Catégorie Produit"] == cat) &
+                (df["Saison"] == saison)
+            ]
 
-        if final_score > 75 or ecart_pct < 15:
-            feu = "🟢"
-            label = "Achat sécurisé"
-            mode_reco = "GREEN"
-        
-        elif final_score < 40 or ecart_pct > 30:
-            feu = "🔴"
-            label = "Achat risqué"
-            mode_reco = "RED"
-        
-        else:
-            feu = "🟠"
-            label = "À vérifier"
-            mode_reco = "ORANGE"
-        
-        # =========================
-        # RECOMMANDATION ACHAT (RULE ENGINE)
-        # =========================
-        
-        if np.isnan(avg_last_year):
-            avg_last_year = 0
-        
-        if mode_reco == "GREEN":
-            reco = pred
-        
-        elif mode_reco == "ORANGE":
-            reco = (pred + avg_last_year) / 2
-        
-        else:  # RED
-            reco = avg_last_year * 0.90  # 90% du marché historique (prudence)
-        
-        commentaire = (
-            f"{label} | "
-            f"écart vs marché: {ecart_pct:.1f}% | "
-            f"ratio: {ratio:.2f}"
-        )
-        
-        # =========================
-        # UI - LIGNE 1 (ALIGNÉE)
-        # =========================
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        col1.metric("📦 Ventes prévues", f"{int(pred):,}".replace(",", " "))
-        col2.metric("🎯 Score confiance", f"{int(final_score)}/100")
-        col3.metric("📊 Historique N-1", "N/A" if np.isnan(avg_last_year) else f"{int(avg_last_year):,}")
-        col4.metric("📈 Ratio marché", f"{ratio:.2f}")
-        
-        # =========================
-        # UI - LIGNE 2 (ALIGNÉE)
-        # =========================
-        
-        col1, col2 = st.columns([1, 2])
-        
-        col1.markdown(f"## {feu} {label}")
-        
-        col2.metric(
-            "🧠 Recommandation achat",
-            f"{int(reco):,}".replace(",", " ")
-        )
-        
-        st.markdown(
-            f"""
-            <div style="
-                margin-top:10px;
-                padding:12px;
-                border-radius:12px;
-                background:rgba(255,255,255,0.08);
-                color:white;
-                font-size:14px;
-            ">
-                💬 {commentaire}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+            hist["Années"] = pd.to_numeric(hist["Années"], errors="coerce")
+
+            v25 = hist[hist["Années"] == 2025]["Quantités Vendues"].mean()
+            v24 = hist[hist["Années"] == 2024]["Quantités Vendues"].mean()
+            v23 = hist[hist["Années"] == 2023]["Quantités Vendues"].mean()
+
+            historique = (
+                (0 if np.isnan(v25) else v25 * 0.5) +
+                (0 if np.isnan(v24) else v24 * 0.3) +
+                (0 if np.isnan(v23) else v23 * 0.2)
+            )
+
+            if np.isnan(historique) or historique == 0:
+                historique = pred
+
+            # =========================
+            # METRICS
+            # =========================
+
+            ratio = pred / (historique + 1e-9)
+            ecart_pct = abs(pred - historique) / (historique + 1e-9) * 100
+
+            ml_s = ml_score(cat, typ)
+
+            # =========================
+            # SCORE
+            # =========================
+
+            if ecart_pct < 10:
+                business = 95
+            elif ecart_pct < 20:
+                business = 85
+            elif ecart_pct < 30:
+                business = 70
+            elif ecart_pct < 40:
+                business = 55
+            else:
+                business = 35
+
+            final_score = 0.55 * business + 0.45 * ml_s
+
+            # =========================
+            # FEU
+            # =========================
+
+            if final_score >= 75 or ecart_pct < 15:
+                feu, label = "🟢", "Achat sécurisé"
+            elif final_score < 40 or ecart_pct > 30:
+                feu, label = "🔴", "Achat risqué"
+            else:
+                feu, label = "🟠", "À vérifier"
+
+            # =========================
+            # RECO
+            # =========================
+
+            if feu == "🟢":
+                reco = pred
+            elif feu == "🟠":
+                reco = (pred + historique) / 2
+            else:
+                reco = historique * 0.9 if pred < historique else historique * 1.1
+
+            # =========================
+            # UI RESULTATS
+            # =========================
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            c1.metric("Ventes prévues", f"{int(pred):,}")
+            c2.metric("Score confiance", f"{int(final_score)}/100")
+            c3.metric("Historique N-1", f"{int(historique):,}")
+            c4.metric("Ratio marché", f"{ratio:.2f}")
+
+            c5, c6 = st.columns([1, 2])
+
+            with c5:
+                st.markdown(f"## {feu} {label}")
+
+            with c6:
+                st.metric("Recommandation achat", f"{int(reco):,}")
+
+            st.info(
+                f"Écart vs historique: {ecart_pct:.1f}% | "
+                f"Ratio: {ratio:.2f}"
+            )
 
 # =========================
 # EXCEL MODE
@@ -309,7 +309,7 @@ if mode == "📊 Manuel":
 
 if mode == "📁 Excel":
 
-    file = st.file_uploader("Upload Excel", type=["xlsx"])
+    file = st.file_uploader("Uploader Excel", type=["xlsx"])
 
     if file:
 
@@ -323,9 +323,7 @@ if mode == "📁 Excel":
             preds = np.expm1(model.predict(df_up))
             df_up["Prediction"] = preds
 
-            df_up["Feu"] = np.where(preds > preds.mean(), "🟢", "🟠")
-
             st.dataframe(df_up)
 
             csv = df_up.to_csv(index=False).encode("utf-8")
-            st.download_button("Télécharger", csv, "predictions.csv")
+            st.download_button("Télécharger", csv, "predictions.csv", "text/csv")
