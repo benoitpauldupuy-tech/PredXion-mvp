@@ -259,49 +259,75 @@ if mode == "📊 Manuel":
 
             # =========================
             # FEU
-            # =========================
-
-            if final_score >= 75 or ecart_pct < 15:
-                feu, label = "🟢", "Achat sécurisé"
-            elif final_score < 40 or ecart_pct > 30:
-                feu, label = "🔴", "Achat risqué"
+        # =========================
+        # FEU (RULE STRICTE)
+        # =========================
+        
+        if final_score >= 75:
+            feu, label = "🟢", "Achat sécurisé"
+        
+        elif final_score >= 40:
+            feu, label = "🟠", "À vérifier"
+        
+        else:
+            feu, label = "🔴", "Achat risqué"
+        
+        # =========================
+        # RECOMMANDATION
+        # =========================
+        
+        if feu == "🟢":
+            reco = pred
+        
+        elif feu == "🟠":
+            reco = (pred + historique) / 2
+        
+        else:
+            reco = historique * (0.9 if pred < historique else 1.1)
+        
+        # =========================
+        # COMMENTAIRE MÉTIER
+        # =========================
+        
+        if final_score >= 75:
+            commentaire = "Prévision cohérente avec le marché et la saisonnalité."
+        
+        elif final_score >= 40:
+        
+            if pred > historique:
+                commentaire = "Signal de hausse vs historique saisonnier. Vérifier capacité stock."
             else:
-                feu, label = "🟠", "À vérifier"
-
-            # =========================
-            # RECO
-            # =========================
-
-            if feu == "🟢":
-                reco = pred
-            elif feu == "🟠":
-                reco = (pred + historique) / 2
+                commentaire = "Baisse vs historique saisonnier. Risque de surstock potentiel."
+        
+        else:
+        
+            if pred > historique:
+                commentaire = "Désalignement fort avec historique. Forte demande attendue vs capacité planifiée."
             else:
-                reco = historique * 0.9 if pred < historique else historique * 1.1
-
-            # =========================
-            # UI RESULTATS
-            # =========================
-
-            c1, c2, c3, c4 = st.columns(4)
-
-            c1.metric("Ventes prévues", f"{int(pred):,}")
-            c2.metric("Score confiance", f"{int(final_score)}/100")
-            c3.metric("Historique N-1", f"{int(historique):,}")
-            c4.metric("Ratio marché", f"{ratio:.2f}")
-
-            c5, c6 = st.columns([1, 2])
-
-            with c5:
-                st.markdown(f"## {feu} {label}")
-
-            with c6:
-                st.metric("Recommandation achat", f"{int(reco):,}")
-
-            st.info(
-                f"Écart vs historique: {ecart_pct:.1f}% | "
-                f"Ratio: {ratio:.2f}"
-            )
+                commentaire = "Chute significative vs historique. Risque élevé de surstock."
+        
+        # =========================
+        # UI (RENOMMAGE IMPORTANT)
+        # =========================
+        
+        c1, c2, c3, c4 = st.columns(4)
+        
+        c1.metric("Ventes prévues", f"{int(pred):,}")
+        c2.metric("Score confiance", f"{int(final_score)}/100")
+        c3.metric("Référence saison 3 ans", f"{int(historique):,}")
+        c4.metric("Ratio marché", f"{ratio:.2f}")
+        
+        c5, c6 = st.columns([1, 2])
+        
+        with c5:
+            st.markdown(f"## {feu} {label}")
+        
+        with c6:
+            st.metric("Recommandation achat", f"{int(reco):,}")
+        
+        # COMMENTAIRE (IMPORTANT UX)
+        st.markdown("### 💬 Analyse métier")
+        st.info(commentaire)
 
 # =========================
 # EXCEL MODE
