@@ -175,14 +175,24 @@ if mode == "📊 Manuel":
 
     if st.button("Prédire"):
 
-        required = [
-        saison, reconduit, cat, subcat, typ,
-        matiere, groupe_couleur, type_couleur,
-        mois, gamme, parc
-    ]
+        required = {
+    "saison": saison,
+    "reconduit": reconduit,
+    "cat": cat,
+    "subcat": subcat,
+    "typ": typ,
+    "matiere": matiere,
+    "groupe": groupe_couleur,
+    "type_couleur": type_couleur,
+    "mois": mois,
+    "gamme": gamme,
+    "parc": parc
+}
 
-    if "Sélectionnez" in required:
-        st.warning("⚠️ Merci de compléter tous les champs")
+missing = [k for k, v in required.items() if v in ["Sélectionnez", "", None]]
+
+if len(missing) > 0:
+    st.warning(f"⚠️ Champs manquants : {', '.join(missing)}")
 
     else:
 
